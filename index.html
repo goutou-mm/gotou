@@ -8,64 +8,292 @@
     <script src="https://fastly.jsdelivr.net/npm/vue@3"></script>
     <script src="https://fastly.jsdelivr.net/npm/vant@3/lib/vant.min.js"></script>
     <style>
-        body { background-color: #f7f8fa; padding: 15px; font-family: sans-serif; }
-        .test-container { max-width: 600px; margin: 0 auto; }
-        .question-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .audio-box { background: #667eea; border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
-        .question-text { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+        body { 
+            background-color: #f7f8fa; 
+            padding: 15px; 
+            font-family: sans-serif; 
+            margin: 0;
+        }
+        .test-container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding-bottom: 30px;
+        }
+        .question-card { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 20px; 
+            margin-bottom: 15px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+        }
+        .audio-box { 
+            background: #667eea; 
+            border-radius: 8px; 
+            padding: 15px; 
+            margin-bottom: 15px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            color: white;
+            transition: background 0.3s;
+        }
+        .audio-box:hover {
+            background: #5568d3;
+        }
+        .audio-box:active {
+            background: #4c5ec4;
+        }
+        .question-text { 
+            font-size: 18px; 
+            font-weight: bold; 
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        .debug-info { 
+            background: #fff3cd; 
+            padding: 10px; 
+            margin-bottom: 15px; 
+            border-radius: 8px; 
+            font-size: 12px; 
+            word-break: break-all;
+            border: 1px solid #ffc107;
+        }
+        .submit-btn {
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 <div id="app" class="test-container">
     <van-nav-bar title="英语能力测评" sticky></van-nav-bar>
+    
+    <!-- 调试信息（上线后可删除或设置debugMode为false） -->
+    <div v-if="debugMode && debugInfo" class="debug-info">
+        <strong>🔍 调试信息：</strong><br>
+        {{ debugInfo }}
+    </div>
+    
     <div v-if="questions.length > 0">
         <div v-for="(q, index) in questions" :key="index" class="question-card">
+            <!-- 听力题 -->
             <div v-if="q.audio_text">
-                <div style="color:#969799; font-size:14px; margin-bottom:8px;">🎧 第 {{index+1}} 题：听力理解</div>
+                <div style="color:#969799; font-size:14px; margin-bottom:8px;">
+                    🎧 第 {{index+1}} 题：听力理解
+                </div>
                 <div class="audio-box" @click="playAudio(q.audio_text)">
                     <van-icon name="volume-o" size="24" style="margin-right:10px;"></van-icon>
                     <span>点击播放音频 (请认真听)</span>
                 </div>
             </div>
-            <div v-else class="question-text">{{ index + 1 }}. {{ q.question }}</div>
+            <!-- 普通题 -->
+            <div v-else class="question-text">
+                {{ index + 1 }}. {{ q.question }}
+            </div>
+            
+            <!-- 选项 -->
             <van-radio-group v-model="userAnswers[index]">
-                <van-radio v-for="(opt, i) in q.options" :key="i" :name="opt" style="margin-bottom:12px;">{{ opt }}</van-radio>
+                <van-radio 
+                    v-for="(opt, i) in q.options" 
+                    :key="i" 
+                    :name="opt" 
+                    style="margin-bottom:12px;">
+                    {{ opt }}
+                </van-radio>
             </van-radio-group>
         </div>
-        <van-button type="primary" block round @click="submitTest">提交测验</van-button>
+        
+        <van-button 
+            type="primary" 
+            block 
+            round 
+            class="submit-btn"
+            @click="submitTest">
+            提交测验
+        </van-button>
     </div>
-    <van-empty v-else description="试卷解析中...请确保飞书链接包含了题目数据"></van-empty>
+    
+    <van-empty 
+        v-else 
+        description="试卷加载中...请稍候"
+        image="search">
+    </van-empty>
 </div>
 
 <script>
     const app = Vue.createApp({
-        data() { return { questions: [], userAnswers: [] }; },
+        data() { 
+            return { 
+                questions: [],           // 题目数组
+                userAnswers: [],         // 用户答案数组
+                debugMode: false,        // 调试模式开关（上线后设为false）
+                debugInfo: ''            // 调试信息
+            }; 
+        },
         created() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const rawData = urlParams.get('data');
-            if (rawData) {
-                try {
-                    let text = decodeURIComponent(rawData);
-                    // 【救命逻辑】：直接匹配 [ { "question": ... } ] 这种结构的数组
-                    const match = text.match(/\[\s*\{.*\}\s*\]/s);
-                    let parsed = match ? JSON.parse(match[0]) : JSON.parse(text);
-                    if (parsed.questions) parsed = parsed.questions;
-                    this.questions = Array.isArray(parsed) ? parsed : [];
-                    this.userAnswers = new Array(this.questions.length).fill('');
-                } catch (e) { vant.Toast.fail("题目解析失败"); }
-            }
+            this.loadQuestions();
         },
         methods: {
-            playAudio(t) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang='en-US'; window.speechSynthesis.speak(u); },
-            submitTest() {
-                let correct = 0;
-                this.questions.forEach((q, i) => {
-                    if((this.userAnswers[i]||"").startsWith(q.answer)) correct++;
-                });
-                const score = Math.round((correct/this.questions.length)*100);
+            /**
+             * 加载题目数据
+             */
+            loadQuestions() {
                 const urlParams = new URLSearchParams(window.location.search);
-                const submitUrl = `https://ycn7fuexi0uc.feishu.cn/share/base/form/shrcndu6DXhs0BJqVoFvkkndKHe?prefill_学生姓名=${encodeURIComponent(urlParams.get('name'))}&prefill_测试分数=${score}&prefill_学生ID=${urlParams.get('rid')}&hide_测试分数=1`;
-                window.location.href = submitUrl;
+                const rawData = urlParams.get('data');
+                
+                if (!rawData) {
+                    this.debugInfo = 'URL中未找到data参数';
+                    vant.Toast.fail("未找到题目数据");
+                    return;
+                }
+                
+                try {
+                    // 第一步：URL解码
+                    let text = decodeURIComponent(rawData);
+                    this.debugInfo = `原始数据长度: ${text.length} 字符`;
+                    
+                    // 第二步：解析JSON
+                    let parsed = JSON.parse(text);
+                    
+                    // 第三步：根据不同的数据结构提取题目数组
+                    let questionsArray = null;
+                    
+                    // 情况1: DeepSeek API 完整返回格式
+                    // { "output": { "choices": [{ "message": { "content": "[...]" } }] } }
+                    if (parsed.output && parsed.output.choices && parsed.output.choices[0]) {
+                        const content = parsed.output.choices[0].message.content;
+                        // content 是字符串形式的JSON，需要再次解析
+                        questionsArray = JSON.parse(content);
+                        this.debugInfo += ' | 格式: DeepSeek API';
+                    }
+                    // 情况2: 直接是题目数组 [{ question: ... }, ...]
+                    else if (Array.isArray(parsed)) {
+                        questionsArray = parsed;
+                        this.debugInfo += ' | 格式: 直接数组';
+                    }
+                    // 情况3: 包含questions字段 { questions: [...] }
+                    else if (parsed.questions && Array.isArray(parsed.questions)) {
+                        questionsArray = parsed.questions;
+                        this.debugInfo += ' | 格式: questions字段';
+                    }
+                    // 情况4: 兜底方案 - 正则提取
+                    else {
+                        const match = text.match(/\[\s*\{.*\}\s*\]/s);
+                        if (match) {
+                            questionsArray = JSON.parse(match[0]);
+                            this.debugInfo += ' | 格式: 正则提取';
+                        }
+                    }
+                    
+                    // 第四步：验证并保存题目数组
+                    if (questionsArray && Array.isArray(questionsArray) && questionsArray.length > 0) {
+                        this.questions = questionsArray;
+                        this.userAnswers = new Array(this.questions.length).fill('');
+                        this.debugInfo += ` | ✅ 成功加载 ${this.questions.length} 道题目`;
+                        
+                        // 显示成功提示
+                        if (this.debugMode) {
+                            vant.Toast.success(`加载了${this.questions.length}道题目`);
+                        }
+                    } else {
+                        throw new Error('题目数组为空或格式错误');
+                    }
+                    
+                } catch (e) { 
+                    console.error('题目解析错误:', e);
+                    this.debugInfo = `❌ 解析失败: ${e.message}`;
+                    vant.Toast.fail("题目加载失败，请检查链接"); 
+                }
+            },
+            
+            /**
+             * 播放听力音频
+             */
+            playAudio(text) { 
+                // 停止当前播放
+                window.speechSynthesis.cancel(); 
+                
+                // 创建语音对象
+                const utterance = new SpeechSynthesisUtterance(text); 
+                utterance.lang = 'en-US';    // 英语
+                utterance.rate = 0.9;        // 语速稍慢，便于理解
+                utterance.pitch = 1.0;       // 音调正常
+                utterance.volume = 1.0;      // 音量最大
+                
+                // 播放语音
+                window.speechSynthesis.speak(utterance);
+                
+                // 显示播放提示
+                vant.Toast.loading({
+                    message: '播放中...',
+                    duration: 0,
+                    forbidClick: true
+                });
+                
+                // 播放结束后关闭提示
+                utterance.onend = () => {
+                    vant.Toast.clear();
+                };
+            },
+            
+            /**
+             * 提交测验
+             */
+            submitTest() {
+                // 检查是否有未作答的题目
+                const unanswered = this.userAnswers.filter(ans => !ans).length;
+                
+                if (unanswered > 0) {
+                    vant.Dialog.confirm({
+                        title: '提示',
+                        message: `还有 ${unanswered} 道题未作答，确定要提交吗？`,
+                    }).then(() => {
+                        this.calculateAndSubmit();
+                    }).catch(() => {
+                        // 用户取消
+                    });
+                } else {
+                    this.calculateAndSubmit();
+                }
+            },
+            
+            /**
+             * 计算分数并提交
+             */
+            calculateAndSubmit() {
+                let correct = 0;
+                
+                // 统计正确答案数
+                this.questions.forEach((q, i) => {
+                    const userAnswer = (this.userAnswers[i] || "").trim();
+                    const correctAnswer = q.answer.trim();
+                    
+                    // 答案匹配：完全相等 或 以正确答案开头
+                    if (userAnswer === correctAnswer || userAnswer.startsWith(correctAnswer)) {
+                        correct++;
+                    }
+                });
+                
+                // 计算分数
+                const score = Math.round((correct / this.questions.length) * 100);
+                
+                // 构建飞书表单提交URL
+                const urlParams = new URLSearchParams(window.location.search);
+                const studentName = urlParams.get('name') || '未知学生';
+                const studentId = urlParams.get('rid') || '';
+                
+                const submitUrl = `https://ycn7fuexi0uc.feishu.cn/share/base/form/shrcndu6DXhs0BJqVoFvkkndKHe?prefill_学生姓名=${encodeURIComponent(studentName)}&prefill_测试分数=${score}&prefill_学生ID=${studentId}&hide_测试分数=1`;
+                
+                // 显示得分提示
+                vant.Toast.success({
+                    message: `测试完成！\n得分：${score}分 (${correct}/${this.questions.length})`,
+                    duration: 2000
+                });
+                
+                // 延迟跳转，让用户看到分数
+                setTimeout(() => {
+                    window.location.href = submitUrl;
+                }, 2000);
             }
         }
     }).use(vant).mount('#app');
