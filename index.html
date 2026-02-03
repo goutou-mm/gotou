@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>英语测评系统</title>
+    <title>AI 英语测评</title>
     <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@3/lib/index.css"/>
     <script src="https://fastly.jsdelivr.net/npm/vue@3"></script>
     <script src="https://fastly.jsdelivr.net/npm/vant@3/lib/vant.min.js"></script>
@@ -11,8 +11,8 @@
         body { background-color: #f7f8fa; padding: 15px; font-family: sans-serif; }
         .test-container { max-width: 600px; margin: 0 auto; }
         .question-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-        .question-text { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
         .audio-box { background: #667eea; border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
+        .question-text { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
         .submit-btn { margin-top: 20px; margin-bottom: 40px; }
     </style>
 </head>
@@ -25,7 +25,7 @@
                 <div style="color:#969799; font-size:14px; margin-bottom:8px;">🎧 第 {{index+1}} 题：听力理解</div>
                 <div class="audio-box" @click="playAudio(q.audio_text)">
                     <van-icon name="volume-o" size="24" style="margin-right:10px;"></van-icon>
-                    <span>点击播放音频</span>
+                    <span style="font-weight: bold;">点击播放音频</span>
                 </div>
             </div>
             <div v-else class="question-text">{{ index + 1 }}. {{ q.question }}</div>
@@ -35,7 +35,7 @@
         </div>
         <van-button type="primary" block round class="submit-btn" @click="submitTest">提交测验</van-button>
     </div>
-    <van-empty v-else description="试卷加载中..."></van-empty>
+    <van-empty v-else description="试卷加载中...若无反应请检查参数"></van-empty>
 </div>
 
 <script>
@@ -47,24 +47,27 @@
             if (rawData) {
                 try {
                     let text = decodeURIComponent(rawData);
-                    // 【全能解析逻辑】：无论 JSON 多复杂，直接找题目数组
-                    let match = text.match(/\[\s*\{.*\}\s*\]/s); 
+                    // 强力正则：直接抓取数据中的题目数组部分，解决所有加载空白问题
+                    const match = text.match(/\[\s*\{.*\}\s*\]/s);
                     let parsed = match ? JSON.parse(match[0]) : JSON.parse(text);
-                    this.questions = parsed.questions || parsed;
+                    if (parsed.questions) parsed = parsed.questions;
+                    this.questions = Array.isArray(parsed) ? parsed : [];
                     this.userAnswers = new Array(this.questions.length).fill('');
                     this.timeLogs = new Array(this.questions.length).fill(0);
-                } catch (e) { vant.Toast.fail("题目加载失败"); }
+                    this.lastTime = Date.now();
+                } catch (e) { vant.Toast.fail("题目解析失败"); }
             }
         },
         methods: {
             playAudio(t) { window.speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang='en-US'; window.speechSynthesis.speak(u); },
             recordTime(i) { const n = Date.now(); this.timeLogs[i] = Math.floor((n-this.lastTime)/1000); this.lastTime = n; },
             submitTest() {
-                let correct = 0; let behavior = [];
+                let behavior = [];
+                let correct = 0;
                 this.questions.forEach((q, i) => {
-                    const ok = (this.userAnswers[i]||"").startsWith(q.answer);
+                    const ok = (this.userAnswers[i]||"").startsWith(q.answer) || (this.userAnswers[i] === q.answer);
                     if(ok) correct++;
-                    behavior.push(`题${i+1}:${ok?'对':'错'}(${this.timeLogs[i]}s)`);
+                    behavior.push(`题${i+1}:${ok?'对':'错'}(${this.timeLogs[i]||0}s)`);
                 });
                 const score = Math.round((correct/this.questions.length)*100);
                 const urlParams = new URLSearchParams(window.location.search);
