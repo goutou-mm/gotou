@@ -70,6 +70,9 @@
             border-radius: 12px;
             font-size: 12px;
         }
+        .audio-playing {
+            background: #f56c6c !important;
+        }
     </style>
 </head>
 <body>
@@ -96,9 +99,17 @@
                         (已用时: {{ Math.floor(questionMetrics[index].timeSpent) }}秒)
                     </span>
                 </div>
-                <div class="audio-box" @click="playAudio(q.audio_text, index)">
-                    <van-icon name="volume-o" size="24" style="margin-right:10px;"></van-icon>
-                    <span>点击播放音频 (已播放{{questionMetrics[index].audioPlayCount}}次)</span>
+                <div 
+                    class="audio-box" 
+                    :class="{ 'audio-playing': currentPlayingIndex === index }"
+                    @click="toggleAudio(q.audio_text, index)">
+                    <van-icon 
+                        :name="currentPlayingIndex === index ? 'stop-circle-o' : 'volume-o'" 
+                        size="24" 
+                        style="margin-right:10px;">
+                    </van-icon>
+                    <span v-if="currentPlayingIndex === index">点击停止播放</span>
+                    <span v-else>点击播放音频 (已播放{{questionMetrics[index].audioPlayCount}}次)</span>
                 </div>
             </div>
             <!-- 普通题 -->
@@ -151,7 +162,8 @@
                 testStartTime: null,
                 totalTime: 0,
                 timerInterval: null,
-                questionMetrics: []
+                questionMetrics: [],
+                currentPlayingIndex: null  // 当前正在播放的题目索引
             }; 
         },
         created() {
@@ -165,6 +177,8 @@
             if (this.timerInterval) {
                 clearInterval(this.timerInterval);
             }
+            // 停止音频播放
+            window.speechSynthesis.cancel();
             document.removeEventListener('visibilitychange', this.handleVisibilityChange);
         },
         methods: {
@@ -290,32 +304,57 @@
                 metric.timeSpent = (Date.now() - metric.startTime) / 1000;
             },
             
+            toggleAudio(text, index) {
+                // 如果正在播放这道题，则停止
+                if (this.currentPlayingIndex === index) {
+                    this.stopAudio();
+                    return;
+                }
+                
+                // 否则播放新的音频
+                this.playAudio(text, index);
+            },
+            
             playAudio(text, index) { 
+                // 记录播放次数
                 this.questionMetrics[index].audioPlayCount++;
                 
+                // 如果是首次交互，记录开始时间
                 if (!this.questionMetrics[index].startTime) {
                     this.questionMetrics[index].startTime = Date.now();
                 }
                 
+                // 停止当前播放
                 window.speechSynthesis.cancel(); 
                 
+                // 创建语音对象
                 const utterance = new SpeechSynthesisUtterance(text); 
                 utterance.lang = 'en-US';
                 utterance.rate = 0.9;
                 utterance.pitch = 1.0;
                 utterance.volume = 1.0;
                 
-                window.speechSynthesis.speak(utterance);
+                // 设置当前播放索引
+                this.currentPlayingIndex = index;
                 
-                vant.Toast.loading({
-                    message: '播放中...',
-                    duration: 0,
-                    forbidClick: true
-                });
-                
+                // 播放结束时的处理
                 utterance.onend = () => {
-                    vant.Toast.clear();
+                    this.currentPlayingIndex = null;
                 };
+                
+                // 播放错误时的处理
+                utterance.onerror = (event) => {
+                    console.error('语音播放错误:', event);
+                    this.currentPlayingIndex = null;
+                };
+                
+                // 开始播放
+                window.speechSynthesis.speak(utterance);
+            },
+            
+            stopAudio() {
+                window.speechSynthesis.cancel();
+                this.currentPlayingIndex = null;
             },
             
             submitTest() {
