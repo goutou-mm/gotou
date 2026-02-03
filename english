@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语测评系统</title>
+    <link rel="stylesheet" href="https://fastly.jsdelivr.net/npm/vant@3/lib/index.css"/>
+    <script src="https://fastly.jsdelivr.net/npm/vue@3"></script>
+    <script src="https://fastly.jsdelivr.net/npm/vant@3/lib/vant.min.js"></script>
+    <style>
+        body { background-color: #f7f8fa; padding: 15px; font-family: sans-serif; }
+        .test-container { max-width: 600px; margin: 0 auto; }
+        .question-card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .question-text { font-size: 18px; font-weight: bold; margin-bottom: 15px; }
+        .audio-box { background: #667eea; border-radius: 8px; padding: 15px; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: white; }
+        .submit-btn { margin-top: 20px; margin-bottom: 40px; }
+    </style>
+</head>
+<body>
+<div id="app" class="test-container">
+    <van-nav-bar title="英语能力测评" sticky></van-nav-bar>
+    <div v-if="questions.length > 0">
+        <div v-for="(q, index) in questions" :key="index" class="question-card">
+            <div v-if="q.audio_text">
+                <div style="color:#969799; font-size:14px; margin-bottom:8px;">🎧 第 {{index+1}} 题：听力理解</div>
+                <div class="audio-box" @click="playAudio(q.audio_text)">
+                    <van-icon name="volume-o" size="24" style="margin-right:10px;"></van-icon>
+                    <span>点击播放音频 (请认真听)</span>
+                </div>
+            </div>
+            <div v-else class="question-text">{{ index + 1 }}. {{ q.question }}</div>
+            
+            <van-radio-group v-model="userAnswers[index]" @change="recordTime(index)">
+                <van-radio v-for="(opt, i) in q.options" :key="i" :name="opt" style="margin-bottom:12px;">{{ opt }}</van-radio>
+            </van-radio-group>
+        </div>
+        <van-button type="primary" block round class="submit-btn" @click="submitTest">提交测验</van-button>
+    </div>
+    <van-empty v-else description="试卷加载中...若长时间无反应请刷新"></van-empty>
+</div>
+
+<script>
+    const app = Vue.createApp({
+        data() { return { questions: [], userAnswers: [], timeLogs: [], lastTime: Date.now() }; },
+        created() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rawData = urlParams.get('data');
+            if (rawData) {
+                try {
+                    let text = decodeURIComponent(rawData);
+                    // 【终极解析方案】：正则匹配最内层的题目数组，适配所有 AI 返回格式
+                    const match = text.match(/\[\s*\{.*\}\s*\]/s);
+                    let parsed = match ? JSON.parse(match[0]) : JSON.parse(text);
+                    if (parsed.questions) parsed = parsed.questions;
+                    
+                    this.questions = Array.isArray(parsed) ? parsed : [];
+                    this.userAnswers = new Array(this.questions.length).fill('');
+                    this.timeLogs = new Array(this.questions.length).fill(0);
+                    this.lastTime = Date.now();
+                } catch (e) {
+                    console.error(e);
+                    vant.Toast.fail("题目解析失败，请检查数据格式");
+                }
+            }
+        },
+        methods: {
+            playAudio(t) { 
+                window.speechSynthesis.cancel(); 
+                const u = new SpeechSynthesisUtterance(t); 
+                u.lang='en-US'; u.rate=0.8; 
+                window.speechSynthesis.speak(u); 
+            },
+            recordTime(i) { 
+                const n = Date.now(); 
+                this.timeLogs[i] = Math.floor((n - this.lastTime) / 1000); 
+                this.lastTime = n; 
+            },
+            submitTest() {
+                if(this.userAnswers.includes('')) { vant.Toast('请完成所有题目'); return; }
+                let correct = 0; let behavior = [];
+                this.questions.forEach((q, i) => {
+                    const ok = (this.userAnswers[i]||"").startsWith(q.answer) || (this.userAnswers[i] === q.answer);
+                    if(ok) correct++;
+                    behavior.push(`题${i+1}:${ok?'对':'错'}(${this.timeLogs[i]||0}s)`);
+                });
+                const score = Math.round((correct/this.questions.length)*100);
+                const urlParams = new URLSearchParams(window.location.search);
+                const rid = urlParams.get('rid') || "";
+                const name = urlParams.get('name') || "学生";
+                const formUrl = "https://ycn7fuexi0uc.feishu.cn/share/base/form/shrcndu6DXhs0BJqVoFvkkndKHe";
+                const submitUrl = `${formUrl}?prefill_学生姓名=${encodeURIComponent(name)}&prefill_测试分数=${score}&prefill_学生ID=${rid}&prefill_学习行为数据=${encodeURIComponent(behavior.join(' | '))}&hide_测试分数=1&hide_学生ID=1&hide_学习行为数据=1`;
+                window.location.href = submitUrl;
+            }
+        }
+    }).use(vant).mount('#app');
+</script>
+</body>
+</html>
