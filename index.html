@@ -8,145 +8,362 @@
     <script src="https://fastly.jsdelivr.net/npm/vue@3"></script>
     <script src="https://fastly.jsdelivr.net/npm/vant@3/lib/vant.min.js"></script>
     <style>
-        body { 
-            background-color: #f7f8fa; 
-            padding: 15px; 
-            font-family: sans-serif; 
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .test-container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            padding-bottom: 30px;
+        body { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            padding: 0;
         }
-        .question-card { 
-            background: white; 
-            border-radius: 12px; 
-            padding: 20px; 
-            margin-bottom: 15px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05); 
+        .app-container { 
+            max-width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-        .audio-box { 
-            background: #667eea; 
-            border-radius: 8px; 
-            padding: 15px; 
-            margin-bottom: 15px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            cursor: pointer; 
+        
+        /* 顶部进度条 */
+        .progress-header {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .progress-text {
+            font-size: 14px;
+            color: #666;
+        }
+        .progress-text strong {
+            color: #667eea;
+            font-size: 16px;
+        }
+        .timer {
+            background: #f0f0f0;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            color: #333;
+        }
+        .progress-bar-container {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+        
+        /* 题目卡片容器 */
+        .question-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* 题目卡片 */
+        .question-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* 题目类型标签 */
+        .question-type {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            transition: background 0.3s;
-        }
-        .audio-box:hover {
-            background: #5568d3;
-        }
-        .audio-box:active {
-            background: #4c5ec4;
-        }
-        .question-text { 
-            font-size: 18px; 
-            font-weight: bold; 
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 14px;
             margin-bottom: 15px;
+            font-weight: 500;
+        }
+        
+        /* 题目说明 */
+        .question-instruction {
+            background: #f8f9fa;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #666;
+            border-left: 3px solid #667eea;
+        }
+        
+        /* 听力播放按钮 */
+        .audio-player {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        .audio-player:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .audio-player.playing {
+            background: linear-gradient(135deg, #f56c6c 0%, #e74c3c 100%);
+        }
+        .audio-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+        .audio-text {
+            color: white;
+            font-size: 16px;
+            font-weight: 500;
+        }
+        .audio-count {
+            color: rgba(255,255,255,0.9);
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        /* 阅读材料 */
+        .reading-passage {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+            line-height: 1.8;
+            font-size: 15px;
+        }
+        
+        /* 题目文本 */
+        .question-text {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 20px;
             line-height: 1.6;
         }
-        .debug-info { 
-            background: #fff3cd; 
-            padding: 10px; 
-            margin-bottom: 15px; 
-            border-radius: 8px; 
-            font-size: 12px; 
-            word-break: break-all;
-            border: 1px solid #ffc107;
+        
+        /* 选项样式 */
+        .options-container {
+            margin-bottom: 30px;
         }
-        .submit-btn {
-            margin-top: 20px;
-        }
-        .timer-badge {
-            display: inline-block;
-            background: #e8f4fd;
-            color: #1989fa;
-            padding: 4px 12px;
+        .option-item {
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
             border-radius: 12px;
-            font-size: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
         }
-        .audio-playing {
-            background: #f56c6c !important;
+        .option-item:hover {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+        .option-item.selected {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f3ff 0%, #e8ecff 100%);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+        }
+        .option-label {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+        .option-item.selected .option-label {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+        }
+        .option-text {
+            flex: 1;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        
+        /* 底部按钮 */
+        .button-container {
+            padding: 20px;
+            background: white;
+            box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            flex: 1;
+            height: 50px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-prev {
+            background: #f0f0f0;
+            color: #666;
+        }
+        .btn-prev:hover {
+            background: #e0e0e0;
+        }
+        .btn-prev:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-next {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-next:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        .btn-submit {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .question-card {
+                padding: 20px;
+            }
+            .question-text {
+                font-size: 16px;
+            }
         }
     </style>
 </head>
 <body>
-<div id="app" class="test-container">
-    <van-nav-bar title="英语能力测评" sticky>
-        <template #right>
-            <span class="timer-badge">⏱️ {{ formatTime(totalTime) }}</span>
-        </template>
-    </van-nav-bar>
-    
-    <!-- 调试信息 -->
-    <div v-if="debugMode && debugInfo" class="debug-info">
-        <strong>🔍 调试信息：</strong><br>
-        {{ debugInfo }}
+<div id="app" class="app-container">
+    <!-- 顶部进度条 -->
+    <div class="progress-header">
+        <div class="progress-info">
+            <div class="progress-text">
+                第 <strong>{{ currentIndex + 1 }}</strong> / {{ questions.length }} 题
+            </div>
+            <div class="timer">⏱️ {{ formatTime(totalTime) }}</div>
+        </div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
+        </div>
     </div>
     
-    <div v-if="questions.length > 0">
-        <div v-for="(q, index) in questions" :key="index" class="question-card">
-            <!-- 听力题 -->
-            <div v-if="q.audio_text">
-                <div style="color:#969799; font-size:14px; margin-bottom:8px;">
-                    🎧 第 {{index+1}} 题：听力理解
-                    <span v-if="questionMetrics[index].timeSpent > 0" style="color:#1989fa; margin-left:8px;">
-                        (已用时: {{ Math.floor(questionMetrics[index].timeSpent) }}秒)
-                    </span>
+    <!-- 题目容器 -->
+    <div class="question-container" v-if="questions.length > 0">
+        <div class="question-card">
+            <!-- 题目类型标签 -->
+            <div class="question-type">
+                {{ currentQuestion.typeLabel }}
+            </div>
+            
+            <!-- 题目说明 -->
+            <div class="question-instruction">
+                {{ currentQuestion.instruction }}
+            </div>
+            
+            <!-- 听力播放器 -->
+            <div v-if="currentQuestion.audio_text" 
+                 class="audio-player" 
+                 :class="{ playing: currentPlayingIndex === currentIndex }"
+                 @click="toggleAudio(currentQuestion.audio_text, currentIndex)">
+                <div class="audio-icon">
+                    {{ currentPlayingIndex === currentIndex ? '⏹️' : '🔊' }}
                 </div>
-                <div 
-                    class="audio-box" 
-                    :class="{ 'audio-playing': currentPlayingIndex === index }"
-                    @click="toggleAudio(q.audio_text, index)">
-                    <van-icon 
-                        :name="currentPlayingIndex === index ? 'stop-circle-o' : 'volume-o'" 
-                        size="24" 
-                        style="margin-right:10px;">
-                    </van-icon>
-                    <span v-if="currentPlayingIndex === index">点击停止播放</span>
-                    <span v-else>点击播放音频 (已播放{{questionMetrics[index].audioPlayCount}}次)</span>
+                <div class="audio-text">
+                    {{ currentPlayingIndex === currentIndex ? '点击停止播放' : '点击播放音频' }}
+                </div>
+                <div class="audio-count">
+                    已播放 {{ questionMetrics[currentIndex].audioPlayCount }} 次
                 </div>
             </div>
-            <!-- 普通题 -->
-            <div v-else class="question-text">
-                {{ index + 1 }}. {{ q.question }}
-                <span v-if="questionMetrics[index].timeSpent > 0" style="font-size:12px; color:#969799; margin-left:8px;">
-                    (已用时: {{ Math.floor(questionMetrics[index].timeSpent) }}秒)
-                </span>
+            
+            <!-- 阅读材料 -->
+            <div v-if="currentQuestion.passage" class="reading-passage">
+                {{ currentQuestion.passage }}
+            </div>
+            
+            <!-- 题目文本 -->
+            <div class="question-text">
+                {{ currentQuestion.question }}
             </div>
             
             <!-- 选项 -->
-            <van-radio-group v-model="userAnswers[index]" @change="onAnswerChange(index)">
-                <van-radio 
-                    v-for="(opt, i) in q.options" 
-                    :key="i" 
-                    :name="opt" 
-                    style="margin-bottom:12px;">
-                    {{ opt }}
-                </van-radio>
-            </van-radio-group>
+            <div class="options-container">
+                <div v-for="(option, index) in currentQuestion.options" 
+                     :key="index"
+                     class="option-item"
+                     :class="{ selected: userAnswers[currentIndex] === option }"
+                     @click="selectOption(option)">
+                    <div class="option-label">{{ ['A', 'B', 'C', 'D'][index] }}</div>
+                    <div class="option-text">{{ option }}</div>
+                </div>
+            </div>
         </div>
-        
-        <van-button 
-            type="primary" 
-            block 
-            round 
-            class="submit-btn"
-            @click="submitTest">
-            提交测验
-        </van-button>
     </div>
     
-    <van-empty 
-        v-else 
-        description="试卷加载中...请稍候"
-        image="search">
-    </van-empty>
+    <!-- 加载状态 -->
+    <van-empty v-else description="试卷加载中..." image="search"></van-empty>
+    
+    <!-- 底部按钮 -->
+    <div class="button-container" v-if="questions.length > 0">
+        <button class="btn btn-prev" 
+                @click="prevQuestion" 
+                :disabled="currentIndex === 0">
+            ← 上一题
+        </button>
+        <button v-if="currentIndex < questions.length - 1" 
+                class="btn btn-next" 
+                @click="nextQuestion">
+            下一题 →
+        </button>
+        <button v-else 
+                class="btn btn-submit" 
+                @click="submitTest">
+            提交测验
+        </button>
+    </div>
 </div>
 
 <script>
@@ -155,31 +372,41 @@
             return { 
                 questions: [],
                 userAnswers: [],
-                debugMode: false,        // 改为true可查看调试信息和数据报告
+                currentIndex: 0,           // 当前题目索引
+                debugMode: false,
                 debugInfo: '',
                 
-                // ===== 学习行为数据追踪 =====
+                // 学习行为数据追踪
                 testStartTime: null,
                 totalTime: 0,
                 timerInterval: null,
                 questionMetrics: [],
-                currentPlayingIndex: null  // 当前正在播放的题目索引
+                currentPlayingIndex: null,
+                
+                // 防刷分
+                hasSubmitted: false,
+                submissionLocked: false
             }; 
+        },
+        computed: {
+            currentQuestion() {
+                return this.questions[this.currentIndex] || {};
+            },
+            progressPercent() {
+                return ((this.currentIndex + 1) / this.questions.length) * 100;
+            }
         },
         created() {
             this.loadQuestions();
+            this.checkSubmissionStatus();
         },
         mounted() {
             this.startTimer();
-            document.addEventListener('visibilitychange', this.handleVisibilityChange);
+            this.preventBackNavigation();
         },
         beforeUnmount() {
-            if (this.timerInterval) {
-                clearInterval(this.timerInterval);
-            }
-            // 停止音频播放
+            if (this.timerInterval) clearInterval(this.timerInterval);
             window.speechSynthesis.cancel();
-            document.removeEventListener('visibilitychange', this.handleVisibilityChange);
         },
         methods: {
             loadQuestions() {
@@ -187,68 +414,45 @@
                 const rawData = urlParams.get('data');
                 
                 if (!rawData) {
-                    this.debugInfo = 'URL中未找到data参数';
                     vant.Toast.fail("未找到题目数据");
                     return;
                 }
                 
                 try {
                     let text = decodeURIComponent(rawData);
-                    this.debugInfo = `原始数据长度: ${text.length} 字符`;
-                    
                     let parsed = JSON.parse(text);
                     let questionsArray = null;
                     
                     if (parsed.output && parsed.output.choices && parsed.output.choices[0]) {
                         const content = parsed.output.choices[0].message.content;
                         questionsArray = JSON.parse(content);
-                        this.debugInfo += ' | 格式: DeepSeek API';
                     } else if (Array.isArray(parsed)) {
                         questionsArray = parsed;
-                        this.debugInfo += ' | 格式: 直接数组';
-                    } else if (parsed.questions && Array.isArray(parsed.questions)) {
+                    } else if (parsed.questions) {
                         questionsArray = parsed.questions;
-                        this.debugInfo += ' | 格式: questions字段';
                     } else {
                         const match = text.match(/\[\s*\{.*\}\s*\]/s);
-                        if (match) {
-                            questionsArray = JSON.parse(match[0]);
-                            this.debugInfo += ' | 格式: 正则提取';
-                        }
+                        if (match) questionsArray = JSON.parse(match[0]);
                     }
                     
-                    if (questionsArray && Array.isArray(questionsArray) && questionsArray.length > 0) {
+                    if (questionsArray && questionsArray.length > 0) {
                         this.questions = questionsArray;
                         this.userAnswers = new Array(this.questions.length).fill('');
                         this.initQuestionMetrics();
-                        this.debugInfo += ` | ✅ 成功加载 ${this.questions.length} 道题目`;
                         
-                        if (this.debugMode) {
-                            vant.Toast.success(`加载了${this.questions.length}道题目`);
-                        }
+                        // 开始第一题计时
+                        this.questionMetrics[0].startTime = Date.now();
                     } else {
-                        throw new Error('题目数组为空或格式错误');
+                        throw new Error('题目数组为空');
                     }
                 } catch (e) { 
                     console.error('题目解析错误:', e);
-                    this.debugInfo = `❌ 解析失败: ${e.message}`;
-                    vant.Toast.fail("题目加载失败，请检查链接"); 
+                    vant.Toast.fail("题目加载失败"); 
                 }
             },
             
             initQuestionMetrics() {
                 this.questionMetrics = this.questions.map((q, index) => {
-                    let questionType = '其他';
-                    if (q.audio_text) {
-                        questionType = '听力';
-                    } else if (q.question.includes('📖')) {
-                        questionType = '词汇';
-                    } else if (q.question.includes('✏️')) {
-                        questionType = '填空';
-                    } else if (q.question.includes('✅')) {
-                        questionType = '判断';
-                    }
-                    
                     return {
                         questionIndex: index + 1,
                         startTime: null,
@@ -258,7 +462,7 @@
                         correctAnswer: q.answer,
                         changeCount: 0,
                         audioPlayCount: 0,
-                        questionType: questionType,
+                        questionType: q.questionType || '其他',
                         questionText: q.question || q.audio_text || ''
                     };
                 });
@@ -268,12 +472,6 @@
                 this.testStartTime = Date.now();
                 this.timerInterval = setInterval(() => {
                     this.totalTime = Math.floor((Date.now() - this.testStartTime) / 1000);
-                    
-                    this.questionMetrics.forEach((metric, index) => {
-                        if (metric.startTime && !this.userAnswers[index]) {
-                            metric.timeSpent = (Date.now() - metric.startTime) / 1000;
-                        }
-                    });
                 }, 1000);
             },
             
@@ -283,72 +481,80 @@
                 return `${mins}:${secs.toString().padStart(2, '0')}`;
             },
             
-            handleVisibilityChange() {
-                if (document.hidden) {
-                    console.log('用户离开了页面');
-                }
-            },
-            
-            onAnswerChange(index) {
-                const metric = this.questionMetrics[index];
+            selectOption(option) {
+                if (this.submissionLocked) return;
                 
-                if (!metric.startTime) {
-                    metric.startTime = Date.now();
-                }
+                const metric = this.questionMetrics[this.currentIndex];
                 
-                if (metric.userAnswer && metric.userAnswer !== this.userAnswers[index]) {
+                // 记录修改次数
+                if (metric.userAnswer && metric.userAnswer !== option) {
                     metric.changeCount++;
                 }
                 
-                metric.userAnswer = this.userAnswers[index];
-                metric.timeSpent = (Date.now() - metric.startTime) / 1000;
+                metric.userAnswer = option;
+                this.userAnswers[this.currentIndex] = option;
+            },
+            
+            nextQuestion() {
+                // 记录当前题用时
+                this.recordQuestionTime(this.currentIndex);
+                
+                if (this.currentIndex < this.questions.length - 1) {
+                    this.currentIndex++;
+                    
+                    // 开始新题计时
+                    const metric = this.questionMetrics[this.currentIndex];
+                    if (!metric.startTime) {
+                        metric.startTime = Date.now();
+                    }
+                    
+                    // 停止音频
+                    this.stopAudio();
+                }
+            },
+            
+            prevQuestion() {
+                this.recordQuestionTime(this.currentIndex);
+                
+                if (this.currentIndex > 0) {
+                    this.currentIndex--;
+                    this.stopAudio();
+                }
+            },
+            
+            recordQuestionTime(index) {
+                const metric = this.questionMetrics[index];
+                if (metric.startTime) {
+                    metric.timeSpent = (Date.now() - metric.startTime) / 1000;
+                }
             },
             
             toggleAudio(text, index) {
-                // 如果正在播放这道题，则停止
                 if (this.currentPlayingIndex === index) {
                     this.stopAudio();
-                    return;
+                } else {
+                    this.playAudio(text, index);
                 }
-                
-                // 否则播放新的音频
-                this.playAudio(text, index);
             },
             
-            playAudio(text, index) { 
-                // 记录播放次数
+            playAudio(text, index) {
                 this.questionMetrics[index].audioPlayCount++;
+                window.speechSynthesis.cancel();
                 
-                // 如果是首次交互，记录开始时间
-                if (!this.questionMetrics[index].startTime) {
-                    this.questionMetrics[index].startTime = Date.now();
-                }
-                
-                // 停止当前播放
-                window.speechSynthesis.cancel(); 
-                
-                // 创建语音对象
-                const utterance = new SpeechSynthesisUtterance(text); 
+                const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-US';
-                utterance.rate = 0.9;
-                utterance.pitch = 1.0;
-                utterance.volume = 1.0;
+                utterance.rate = 0.6;
                 
-                // 设置当前播放索引
                 this.currentPlayingIndex = index;
                 
-                // 播放结束时的处理
                 utterance.onend = () => {
                     this.currentPlayingIndex = null;
                 };
                 
-                // 播放错误时的处理
-                utterance.onerror = (event) => {
-                    console.error('语音播放错误:', event);
+                utterance.onerror = () => {
                     this.currentPlayingIndex = null;
                 };
                 
-                // 开始播放
                 window.speechSynthesis.speak(utterance);
             },
             
@@ -357,7 +563,49 @@
                 this.currentPlayingIndex = null;
             },
             
+            checkSubmissionStatus() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const studentId = urlParams.get('rid') || '';
+                
+                if (!studentId) return;
+                
+                const submissionKey = `test_submitted_${studentId}`;
+                const hasSubmitted = localStorage.getItem(submissionKey);
+                
+                if (hasSubmitted) {
+                    const submitTime = localStorage.getItem(`test_submit_time_${studentId}`);
+                    const submitScore = localStorage.getItem(`test_submit_score_${studentId}`);
+                    
+                    vant.Dialog.alert({
+                        title: '测试已完成',
+                        message: `你已经在 ${new Date(submitTime).toLocaleString()} 提交过测试了！\n\n得分：${submitScore}分\n\n每位学生只能提交一次。`,
+                        confirmButtonText: '我知道了',
+                        closeOnClickOverlay: false
+                    });
+                    
+                    this.submissionLocked = true;
+                }
+            },
+            
+            preventBackNavigation() {
+                history.pushState(null, null, location.href);
+                window.addEventListener('popstate', () => {
+                    if (this.hasSubmitted) {
+                        history.pushState(null, null, location.href);
+                        vant.Toast.fail('测试已提交，无法返回');
+                    }
+                });
+            },
+            
             submitTest() {
+                if (this.submissionLocked) {
+                    vant.Toast.fail('测试已提交，无法重复提交');
+                    return;
+                }
+                
+                // 记录最后一题的用时
+                this.recordQuestionTime(this.currentIndex);
+                
                 const unanswered = this.userAnswers.filter(ans => !ans).length;
                 
                 if (unanswered > 0) {
@@ -390,10 +638,6 @@
                     
                     this.questionMetrics[i].isCorrect = isCorrect;
                     this.questionMetrics[i].userAnswer = userAnswer;
-                    
-                    if (this.questionMetrics[i].startTime && !userAnswer) {
-                        this.questionMetrics[i].timeSpent = (Date.now() - this.questionMetrics[i].startTime) / 1000;
-                    }
                 });
                 
                 const score = Math.round((correct / this.questions.length) * 100);
@@ -402,6 +646,15 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const studentName = urlParams.get('name') || '未知学生';
                 const studentId = urlParams.get('rid') || '';
+                
+                if (studentId) {
+                    localStorage.setItem(`test_submitted_${studentId}`, 'true');
+                    localStorage.setItem(`test_submit_time_${studentId}`, new Date().toISOString());
+                    localStorage.setItem(`test_submit_score_${studentId}`, score.toString());
+                }
+                
+                this.hasSubmitted = true;
+                this.submissionLocked = true;
                 
                 const behaviorDataJson = JSON.stringify(behaviorReport);
                 
@@ -412,12 +665,6 @@
                     `&prefill_学习行为数据=${encodeURIComponent(behaviorDataJson)}` +
                     `&hide_测试分数=1` +
                     `&hide_学习行为数据=1`;
-                
-                if (this.debugMode) {
-                    console.log('===== 学习行为数据报告 =====');
-                    console.log(JSON.stringify(behaviorReport, null, 2));
-                    console.log('\n提交URL:', submitUrl);
-                }
                 
                 vant.Toast.success({
                     message: `测试完成！\n得分：${score}分 (${correct}/${this.questions.length})`,
@@ -430,7 +677,6 @@
             },
             
             generateBehaviorReport(score, correctCount, wrongQuestions) {
-                // 按题型统计
                 const typeStats = {};
                 this.questionMetrics.forEach(metric => {
                     if (!typeStats[metric.questionType]) {
@@ -456,18 +702,13 @@
                 const sortedByTime = [...this.questionMetrics].sort((a, b) => b.timeSpent - a.timeSpent);
                 
                 return {
-                    // 基本信息
                     score: score,
                     correctCount: correctCount,
                     totalQuestions: this.questions.length,
                     totalTime: this.totalTime,
                     avgTimePerQuestion: Math.round(this.totalTime / this.questions.length),
-                    
-                    // 错题信息
                     wrongQuestions: wrongQuestions,
                     wrongCount: wrongQuestions.length,
-                    
-                    // 详细题目数据（供AI分析）
                     questionDetails: this.questionMetrics.map(m => ({
                         questionIndex: m.questionIndex,
                         questionType: m.questionType,
@@ -478,19 +719,13 @@
                         changeCount: m.changeCount,
                         audioPlayCount: m.audioPlayCount
                     })),
-                    
-                    // 题型统计（供AI分析薄弱环节）
                     typeStatistics: typeStats,
-                    
-                    // 答题模式分析
                     patterns: {
                         fastestQuestion: sortedByTime[sortedByTime.length - 1]?.questionIndex || 0,
                         slowestQuestion: sortedByTime[0]?.questionIndex || 0,
                         totalChanges: this.questionMetrics.reduce((sum, m) => sum + m.changeCount, 0),
                         totalAudioPlays: this.questionMetrics.reduce((sum, m) => sum + m.audioPlayCount, 0)
                     },
-                    
-                    // 时间戳
                     submittedAt: new Date().toISOString()
                 };
             }
