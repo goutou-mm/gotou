@@ -409,7 +409,72 @@
             window.speechSynthesis.cancel();
         },
         methods: {
-            loadQuestions() {
+            async loadQuestions() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const recordId = urlParams.get('rid');
+                
+                if (!recordId) {
+                    vant.Toast.fail("缺少记录ID参数");
+                    return;
+                }
+                
+                try {
+                    // 显示加载提示
+                    vant.Toast.loading({
+                        message: '加载题目中...',
+                        forbidClick: true,
+                        duration: 0
+                    });
+                    
+                    // ===== 从API读取题目数据 =====
+                    // TODO: 替换为你部署的Vercel地址
+                    const apiUrl = 'https://english-test-api.vercel.app/api/get-test-data';
+                    const response = await fetch(`${apiUrl}?rid=${recordId}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('加载题目失败');
+                    }
+                    
+                    const result = await response.json();
+                    
+                    vant.Toast.clear();
+                    
+                    if (!result.success) {
+                        throw new Error(result.error || '数据加载失败');
+                    }
+                    
+                    // 提取数据
+                    const { studentName, questions } = result.data;
+                    
+                    if (questions && questions.length > 0) {
+                        this.questions = questions;
+                        this.userAnswers = new Array(this.questions.length).fill('');
+                        this.initQuestionMetrics();
+                        
+                        // 开始第一题计时
+                        this.questionMetrics[0].startTime = Date.now();
+                        
+                        // 存储学生姓名（用于后续提交）
+                        sessionStorage.setItem('studentName', studentName);
+                        
+                        vant.Toast.success('题目加载成功');
+                    } else {
+                        throw new Error('题目数据为空');
+                    }
+                    
+                } catch (error) { 
+                    console.error('题目加载错误:', error);
+                    vant.Toast.clear();
+                    
+                    // 如果API失败，降级到URL参数方式（兼容旧链接）
+                    this.loadQuestionsFromUrl();
+                }
+            },
+            
+            /**
+             * 备用方案：从URL参数读取（兼容旧链接）
+             */
+            loadQuestionsFromUrl() {
                 const urlParams = new URLSearchParams(window.location.search);
                 const rawData = urlParams.get('data');
                 
@@ -439,8 +504,6 @@
                         this.questions = questionsArray;
                         this.userAnswers = new Array(this.questions.length).fill('');
                         this.initQuestionMetrics();
-                        
-                        // 开始第一题计时
                         this.questionMetrics[0].startTime = Date.now();
                     } else {
                         throw new Error('题目数组为空');
@@ -543,7 +606,7 @@
                 
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'en-US';
-                utterance.rate = 0.6;
+                utterance.rate = 0.9;
                 
                 this.currentPlayingIndex = index;
                 
@@ -644,8 +707,10 @@
                 const behaviorReport = this.generateBehaviorReport(score, correct, wrongQuestions);
                 
                 const urlParams = new URLSearchParams(window.location.search);
-                const studentName = urlParams.get('name') || '未知学生';
                 const studentId = urlParams.get('rid') || '';
+                
+                // 优先从sessionStorage读取学生姓名（从API获取的）
+                const studentName = sessionStorage.getItem('studentName') || urlParams.get('name') || '未知学生';
                 
                 if (studentId) {
                     localStorage.setItem(`test_submitted_${studentId}`, 'true');
